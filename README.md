@@ -7,7 +7,7 @@ automation.
 ## Install
 
 ```bash
-pip install git+https://github.com/alexandrepa/pyvav
+pip install git+https://github.com/alexandrepa/vav-connect-cli
 ```
 
 ## Library

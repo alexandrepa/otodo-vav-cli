@@ -18,7 +18,7 @@ been verified against the real Otodo service**. Start with read-only commands (`
 ## Install
 
 ```bash
-pip install git+https://github.com/alexandrepa/pyvav
+pip install git+https://github.com/alexandrepa/vav-connect-cli
 ```
 
 ## Library

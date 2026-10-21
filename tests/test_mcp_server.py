@@ -25,6 +25,15 @@ SERVICES = [
         "comfortTemp": 20,
         "modules": [{"deviceId": 9, "endpointIndex": 0, "capabilityId": 1}],
     },
+    {
+        "_id": 15,
+        "type": "thermostat",
+        "roomId": "r3",
+        "workingMode": 0,
+        "comfortTemp": 19,
+        "sensors": {"temp": {"capabilityId": 4, "deviceId": 20, "endpointIndex": 0}},
+        "modules": [{"deviceId": 21, "endpointIndex": 0, "capabilityId": 6}],
+    },
     {"_id": 13, "type": "water-heater"},
 ]
 
@@ -47,7 +56,11 @@ class FakeClient:
 
     def list_rooms(self):
         self._check()
-        return [{"_id": "r1", "name": "Salon"}, {"_id": "r2", "name": "Chambre Élise"}]
+        return [
+            {"_id": "r1", "name": "Salon"},
+            {"_id": "r2", "name": "Chambre Élise"},
+            {"_id": "r3", "name": "Bureau"},
+        ]
 
     def list_hubs(self):
         return [{"_id": "hub1"}]
@@ -56,7 +69,7 @@ class FakeClient:
         return [s for s in self.services if s["type"] == "thermostat"]
 
     def measured_temperatures(self):
-        return {9: 17.5}
+        return {9: 17.5, 20: 19.0}
 
     def _service(self, service_id):
         return next(s for s in self.services if s["_id"] == service_id)
@@ -100,6 +113,14 @@ def test_list_radiators_uses_room_names_and_device_temperature(controller):
             "measured_temperature": 17.5,
             "active": True,
         },
+        {
+            "id": 15,
+            "name": "Bureau",
+            "mode": "auto",
+            "comfort_temperature": 19,
+            "measured_temperature": 19.0,
+            "active": True,
+        },
     ]
 
 
@@ -111,7 +132,7 @@ def test_set_mode_matches_names_loosely(controller, fake):
 def test_set_mode_all_and_ids(controller, fake):
     controller.set_mode(["all"], "frost-protection")
     controller.set_mode(["14"], "off")
-    assert [c[2] for c in fake.calls] == [12, 14, 14]
+    assert [c[2] for c in fake.calls] == [12, 14, 15, 14]
     assert fake.calls[-1][3] is HeatingMode.OFF
 
 

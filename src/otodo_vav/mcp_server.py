@@ -130,6 +130,9 @@ class RadiatorController:
         except ValueError:
             mode = f"unknown ({service.get('workingMode')})"
         temperature = (service.get("sensors") or {}).get("temp")
+        if isinstance(temperature, dict):
+            # A reference to the room's temperature sensor: {deviceId, endpointIndex, capabilityId}
+            temperature = measured.get(temperature.get("deviceId"))
         if not isinstance(temperature, (int, float)):
             temperature = next(
                 (

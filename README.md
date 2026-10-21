@@ -132,7 +132,7 @@ looks like this (abridged, illustrative values):
   "isActive": true,
   "workingMode": 0,
   "comfortTemp": 19,
-  "sensors": {"temp": 18.4},
+  "sensors": {"temp": {"deviceId": 8, "endpointIndex": 0, "capabilityId": 4}},
   "modules": [{"deviceId": 7, "endpointIndex": 0, "capabilityId": 1}],
   "weeklyEvents": [{"d": 1, "t": 1860, "mm": 3}],
   "hysteresis": 0.5,
@@ -141,7 +141,8 @@ looks like this (abridged, illustrative values):
 }
 ```
 
-`modules` links the service to the radiators it drives. `weeklyEvents` is the schedule used in
+`modules` links the service to the radiators it drives, and `sensors.temp` to the room's
+temperature sensor (capability 4 of that device holds the measured temperature). `weeklyEvents` is the schedule used in
 Auto mode: each event switches the service to mode `mm` at minute `t` of the week, on day `d`
 (`t = d × 1440 + minute of the day`). Day 0 is **Monday** and `mm` is the pilot-wire value,
 2 = comfort and 3 = eco; both were checked by editing a schedule in the app (homebridge-otodo-vav

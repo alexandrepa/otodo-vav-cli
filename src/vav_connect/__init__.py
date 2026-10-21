@@ -11,10 +11,13 @@ from .client import (
     VavError,
     kelvin_x10_to_celsius,
 )
+from .schedule import DAYS, SCHEDULE_MODES
 
 __all__ = [
     "BASE_URL",
+    "DAYS",
     "PILOT_WIRE_VALUE",
+    "SCHEDULE_MODES",
     "TEMPERATURE_CAPABILITY_ID",
     "HeatingMode",
     "NotAuthenticatedError",

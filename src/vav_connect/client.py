@@ -11,6 +11,8 @@ from typing import Any
 
 import requests
 
+from .schedule import sort_events
+
 BASE_URL = "https://api.gateway.otodo.io"
 PARK_NAME = "vav"
 APP_VERSION = "4.14.4"
@@ -339,6 +341,15 @@ class VavClient:
     def set_comfort_temperature(self, hub_id: str, service_id: int, temperature: float) -> Any:
         service = self.get_heating_service(hub_id, service_id)
         service["comfortTemp"] = temperature
+        return self.update_heating_service(hub_id, service)
+
+    def get_schedule(self, hub_id: str, service_id: int) -> list[dict[str, Any]]:
+        """The `weeklyEvents` a service follows in Auto mode (see `vav_connect.schedule`)."""
+        return self.get_heating_service(hub_id, service_id).get("weeklyEvents") or []
+
+    def set_schedule(self, hub_id: str, service_id: int, events: list[dict[str, Any]]) -> Any:
+        service = self.get_heating_service(hub_id, service_id)
+        service["weeklyEvents"] = sort_events(events)
         return self.update_heating_service(hub_id, service)
 
     def list_services(self) -> Any:

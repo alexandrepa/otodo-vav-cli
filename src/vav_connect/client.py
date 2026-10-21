@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import IntEnum
@@ -38,6 +39,14 @@ PILOT_WIRE_VALUE = {
     HeatingMode.OFF: 0,
 }
 
+# Device capability holding the measured temperature, in tenths of a kelvin.
+TEMPERATURE_CAPABILITY_ID = 4
+_KELVIN_X10_AT_0C = 2731
+
+
+def kelvin_x10_to_celsius(value: float) -> float:
+    return round((value - _KELVIN_X10_AT_0C) / 10, 1)
+
 
 class VavError(Exception):
     def __init__(self, status: int, method: str, path: str, body: Any):
@@ -57,6 +66,16 @@ class Session:
     access_token: str
     refresh_token: str | None = None
     user: dict[str, Any] | None = None
+    expires_at: float | None = None
+    """Access-token expiry as a Unix timestamp, from the server's `expires_in`."""
+
+    def expires_within(self, seconds: float) -> bool:
+        return self.expires_at is not None and time.time() >= self.expires_at - seconds
+
+
+def _expires_at(data: dict[str, Any]) -> float | None:
+    expires_in = data.get("expires_in")
+    return time.time() + expires_in if isinstance(expires_in, (int, float)) else None
 
 
 class VavClient:
@@ -69,6 +88,7 @@ class VavClient:
         timeout: float = 30.0,
         session: Session | None = None,
         http: requests.Session | None = None,
+        refresh_margin: float = 300.0,
     ):
         self.base_url = base_url.rstrip("/")
         self.language = language
@@ -76,6 +96,7 @@ class VavClient:
         self.timeout = timeout
         self.session = session
         self.http = http or requests.Session()
+        self.refresh_margin = refresh_margin
 
     # --- transport -------------------------------------------------------
 
@@ -121,9 +142,17 @@ class VavClient:
     def request(
         self, method: str, path: str, *, json_body: Any = None, params: dict[str, Any] | None = None
     ) -> Any:
-        """Authenticated request; refreshes the token once on HTTP 401."""
+        """Authenticated request.
+
+        The token is refreshed ahead of its expiry, and once more on HTTP 401.
+        """
         if self.session is None:
             raise NotAuthenticatedError("call login() first")
+        if self.session.refresh_token and self.session.expires_within(self.refresh_margin):
+            try:
+                self.refresh()
+            except VavError:
+                pass  # the current token may still be valid; a 401 below retries the refresh
         resp = self._send(
             method, path, token=self.session.access_token, json_body=json_body, params=params
         )
@@ -148,7 +177,9 @@ class VavClient:
         user = self._decode(resp)
         if not resp.ok or not isinstance(user, dict) or "access_token" not in user:
             raise VavError(resp.status_code, "POST", "/authenticate", user)
-        self.session = Session(user["access_token"], user.get("refresh_token"), user)
+        self.session = Session(
+            user["access_token"], user.get("refresh_token"), user, _expires_at(user)
+        )
         return user
 
     def refresh(self) -> dict[str, Any]:
@@ -160,6 +191,7 @@ class VavClient:
             raise VavError(resp.status_code, "POST", "/refreshToken", data)
         self.session.access_token = data["access_token"]
         self.session.refresh_token = data.get("refresh_token", self.session.refresh_token)
+        self.session.expires_at = _expires_at(data)
         return data
 
     def recover_password(self, email: str) -> Any:
@@ -181,22 +213,22 @@ class VavClient:
     def list_devices(self, brand: str | None = None) -> Any:
         return self.request("GET", "/devices", params={"brand": brand})
 
-    def get_device(self, device_id: str) -> Any:
+    def get_device(self, device_id: int) -> Any:
         return self.request("GET", f"/devices/{device_id}")
 
-    def patch_device(self, device_id: str, changes: dict[str, Any]) -> Any:
+    def patch_device(self, device_id: int, changes: dict[str, Any]) -> Any:
         return self.request("PATCH", f"/devices/{device_id}", json_body=changes)
 
-    def set_endpoint_name(self, device_id: str, endpoint_index: int, name: str) -> Any:
+    def set_endpoint_name(self, device_id: int, endpoint_index: int, name: str) -> Any:
         return self.request(
             "PATCH", f"/devices/{device_id}/endpoints/{endpoint_index}", json_body={"name": name}
         )
 
     def send_action(
         self,
-        device_id: str,
+        device_id: int,
         endpoint_index: int,
-        capability_id: str,
+        capability_id: int,
         value: Any,
         parameters: Any = None,
     ) -> Any:
@@ -214,7 +246,7 @@ class VavClient:
         return self.request("POST", f"/devices/{device_id}/actions", json_body=body)
 
     def set_pilot_wire_mode(
-        self, device_id: str, endpoint_index: int, capability_id: str, mode: HeatingMode
+        self, device_id: int, endpoint_index: int, capability_id: int, mode: HeatingMode
     ) -> Any:
         if mode not in PILOT_WIRE_VALUE:
             raise ValueError(f"{mode.name} has no direct pilot-wire value")
@@ -222,27 +254,45 @@ class VavClient:
 
     def capability_history(
         self,
-        device_id: str,
+        device_id: int,
         start: str,
         end: str,
         aggregation_minutes: int | None = None,
-        aggregable_capabilities: list[str] | None = None,
+        aggregable_capabilities: list[int] | None = None,
     ) -> Any:
         params = {
             "startDate": start,
             "endDate": end,
             "aggregationMinutes": aggregation_minutes,
-            "aggregableCapas": ",".join(aggregable_capabilities)
+            "aggregableCapas": ",".join(map(str, aggregable_capabilities))
             if aggregable_capabilities
             else None,
         }
         return self.request("GET", f"/devices/{device_id}/capabilities/values", params=params)
 
-    def add_device_favorite(self, device_id: str) -> Any:
+    def add_device_favorite(self, device_id: int) -> Any:
         return self.request("POST", f"/devices/{device_id}/add-favorite")
 
-    def remove_device_favorite(self, device_id: str) -> Any:
+    def remove_device_favorite(self, device_id: int) -> Any:
         return self.request("POST", f"/devices/{device_id}/remove-favorite")
+
+    def measured_temperatures(self) -> dict[int, float]:
+        """Measured temperature in °C per device id, for devices that report one."""
+        temperatures = {}
+        for device in self.list_devices() or []:
+            for endpoint in device.get("endpoints") or []:
+                capability = next(
+                    (
+                        c
+                        for c in endpoint.get("capabilities") or []
+                        if c.get("_id") == TEMPERATURE_CAPABILITY_ID
+                    ),
+                    None,
+                )
+                if capability is not None and isinstance(capability.get("value"), (int, float)):
+                    temperatures[device["_id"]] = kelvin_x10_to_celsius(capability["value"])
+                    break
+        return temperatures
 
     # --- hubs ------------------------------------------------------------
 
@@ -260,7 +310,12 @@ class VavClient:
     def list_heating_services(self, hub_id: str) -> Any:
         return self.request("GET", f"/hubs/{hub_id}/local-services")
 
-    def get_heating_service(self, hub_id: str, service_id: str) -> dict[str, Any]:
+    def list_thermostats(self, hub_id: str) -> list[dict[str, Any]]:
+        return [
+            s for s in self.list_heating_services(hub_id) or [] if s.get("type") == "thermostat"
+        ]
+
+    def get_heating_service(self, hub_id: str, service_id: int) -> dict[str, Any]:
         for service in self.list_heating_services(hub_id) or []:
             if service.get("_id") == service_id:
                 return service
@@ -276,12 +331,12 @@ class VavClient:
             "PUT", f"/hubs/{hub_id}/local-services/{service['_id']}", json_body=body
         )
 
-    def set_heating_mode(self, hub_id: str, service_id: str, mode: HeatingMode) -> Any:
+    def set_heating_mode(self, hub_id: str, service_id: int, mode: HeatingMode) -> Any:
         service = self.get_heating_service(hub_id, service_id)
         service["workingMode"] = int(mode)
         return self.update_heating_service(hub_id, service)
 
-    def set_comfort_temperature(self, hub_id: str, service_id: str, temperature: float) -> Any:
+    def set_comfort_temperature(self, hub_id: str, service_id: int, temperature: float) -> Any:
         service = self.get_heating_service(hub_id, service_id)
         service["comfortTemp"] = temperature
         return self.update_heating_service(hub_id, service)
@@ -289,7 +344,7 @@ class VavClient:
     def list_services(self) -> Any:
         return self.request("GET", "/services")
 
-    def service_action(self, service_id: str, body: dict[str, Any]) -> Any:
+    def service_action(self, service_id: int | str, body: dict[str, Any]) -> Any:
         return self.request("POST", f"/services/{service_id}/actions", json_body=body)
 
     # --- homes, rooms, settings ------------------------------------------
@@ -344,7 +399,7 @@ class VavClient:
 
     def device_energy_consumption(
         self,
-        device_id: str,
+        device_id: int,
         duration: str,
         year: int,
         month: int | None = None,

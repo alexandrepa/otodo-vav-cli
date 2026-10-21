@@ -40,6 +40,15 @@ client.set_comfort_temperature(hub_id, 12, 20.5)
 
 client.measured_temperatures()  # {device_id: °C}
 
+# Weekly schedule followed in Auto mode
+from vav_connect import schedule
+
+events = client.get_schedule(hub_id, 12)
+events = schedule.replace_days(
+    events, schedule.parse_days("sat,sun"), schedule.parse_day_program("08:00=comfort,23:00=eco")
+)
+client.set_schedule(hub_id, 12, events)
+
 # Direct capability write on a device
 client.send_action(device_id=7, endpoint_index=0, capability_id=4, value=19.5)
 ```
@@ -59,9 +68,18 @@ vav-connect services <hubId>
 vav-connect thermostats <hubId>            # services of type "thermostat" only
 vav-connect set-mode <hubId> <serviceId> eco
 vav-connect set-temp <hubId> <serviceId> 20.5
+vav-connect schedule <hubId> <serviceId>  # weekly schedule followed in Auto mode
+vav-connect set-schedule <hubId> <serviceId> --day mon-fri 06:00=comfort,09:00=eco,18:00=comfort,23:00=eco
+vav-connect set-schedule <hubId> <serviceId> --day sat,sun 08:00=comfort,23:00=eco --dry-run
+vav-connect copy-schedule <hubId> <sourceServiceId> <targetServiceId>...
 vav-connect action <deviceId> <endpointIndex> <capabilityId> 19.5
 vav-connect raw GET /rooms
 ```
+
+`set-schedule` starts from the current schedule (or from `--file`, a JSON list such as the
+output of `schedule --json`) and replaces each day given with `--day`; other days are kept.
+`--dry-run` prints the result without sending it. The schedule only applies in `auto` mode
+(`set-mode <hubId> <serviceId> auto`).
 
 Instead of `vav-connect login`, you can set `VAV_EMAIL` and `VAV_PASSWORD`. `VAV_TOKEN_FILE` changes
 where the session token is stored.
@@ -107,7 +125,11 @@ looks like this (abridged, illustrative values):
 ```
 
 `modules` links the service to the radiators it drives. `weeklyEvents` is the schedule used in
-Auto mode: `d` is the weekday, `t` the minute of the week, `mm` the mode.
+Auto mode: each event switches the service to mode `mm` at minute `t` of the week, on day `d`
+(`t = d × 1440 + minute of the day`). Day 0 is **Monday** and `mm` is the pilot-wire value,
+2 = comfort and 3 = eco; both were checked by editing a schedule in the app (homebridge-otodo-vav
+documents Sunday and the opposite modes). The app's default schedule is comfort 06:00–09:00 and
+18:00–23:00, eco otherwise.
 
 | Mode | `workingMode` | Pilot-wire device value |
 | --- | --- | --- |

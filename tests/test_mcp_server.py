@@ -4,7 +4,7 @@ import anyio
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 
-from otodo_vav import HeatingMode, VavError
+from otodo_vav import HeatingMode, VavError, mcp_server
 from otodo_vav.mcp_server import RadiatorController, build_server
 
 SERVICES = [
@@ -34,6 +34,7 @@ class FakeClient:
         self.services = copy.deepcopy(SERVICES)
         self.calls = []
         self.expired = False
+        self.session = "logged in"
 
     def _check(self):
         if self.expired:
@@ -42,6 +43,7 @@ class FakeClient:
     def login(self, email, password):
         self.calls.append(("login", email))
         self.expired = False
+        self.session = "logged in"
 
     def list_rooms(self):
         self._check()
@@ -160,6 +162,47 @@ def test_relogin_when_session_expired(controller, fake):
     fake.expired = True
     controller.list_radiators()
     assert fake.calls == [("login", "me@example.com")]
+
+
+def test_logs_in_on_first_call(controller, fake):
+    fake.session = None
+    controller.list_radiators()
+    assert fake.calls == [("login", "me@example.com")]
+
+
+def test_reports_missing_credentials(fake):
+    fake.session = None
+    with pytest.raises(ToolError, match="VAV_EMAIL"):
+        RadiatorController(fake).list_radiators()
+
+
+def test_server_starts_without_logging_in(monkeypatch, tmp_path):
+    monkeypatch.setenv("VAV_TOKEN_FILE", str(tmp_path / "token.json"))
+    monkeypatch.setenv("VAV_EMAIL", "me@example.com")
+    monkeypatch.setenv("VAV_PASSWORD", "pw")
+    controller = mcp_server._controller_from_env()
+    assert controller.client.session is None and controller.email == "me@example.com"
+    monkeypatch.delenv("VAV_EMAIL")
+    assert mcp_server._controller_from_env().client.session is None
+
+
+def test_http_is_stateless_on_the_secret_path(monkeypatch):
+    runs = []
+    monkeypatch.setattr(mcp_server, "_controller_from_env", lambda: None)
+    monkeypatch.setattr(
+        mcp_server,
+        "build_server",
+        lambda c: type("S", (), {"run": lambda *a, **k: runs.append(k)})(),
+    )
+    mcp_server.main(["--http", "--host", "0.0.0.0", "--secret", "s" * 24])
+    assert runs == [
+        {
+            "host": "0.0.0.0",
+            "port": 8099,
+            "streamable_http_path": "/mcp/" + "s" * 24,
+            "stateless_http": True,
+        }
+    ]
 
 
 def test_tools_are_exposed(controller, fake):

@@ -67,6 +67,12 @@ class RadiatorController:
 
     def _call(self, fn, *args):
         """Run `fn(*args)`, logging in again once if the session can no longer be refreshed."""
+        if self.client.session is None:
+            if not (self.email and self.password):
+                raise ToolError(
+                    "not logged in: set VAV_EMAIL and VAV_PASSWORD, or run `otodo-vav login`"
+                )
+            self.client.login(self.email, self.password)
         try:
             return fn(*args)
         except VavError as exc:
@@ -266,14 +272,16 @@ def build_server(controller: RadiatorController) -> MCPServer:
 
 
 def _controller_from_env() -> RadiatorController:
-    from .cli import _client_from_env
+    from .cli import _client_from_env, _token_file
 
     email, password = os.environ.get("VAV_EMAIL"), os.environ.get("VAV_PASSWORD")
     if email and password:
+        # Logged in on the first tool call, so the server starts even if the cloud is down
         client = VavClient()
-        client.login(email, password)
-    else:
+    elif _token_file().exists():
         client = _client_from_env()
+    else:
+        client = VavClient()  # tools report how to configure credentials
     return RadiatorController(client, email, password)
 
 
@@ -309,7 +317,14 @@ def main(argv: list[str] | None = None) -> None:
     path = f"/mcp/{args.secret}" if args.secret else "/mcp"
     shown = "/mcp/<secret>" if args.secret else path
     print(f"Serving MCP on http://{args.host}:{args.port}{shown}", file=sys.stderr)
-    server.run("streamable-http", host=args.host, port=args.port, streamable_http_path=path)
+    # Stateless: no session to lose when the server restarts, and the tools need none
+    server.run(
+        "streamable-http",
+        host=args.host,
+        port=args.port,
+        streamable_http_path=path,
+        stateless_http=True,
+    )
 
 
 if __name__ == "__main__":

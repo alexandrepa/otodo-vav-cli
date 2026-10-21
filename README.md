@@ -70,6 +70,37 @@ output of `schedule --json`) and replaces each day given with `--day`; other day
 Instead of `otodo-vav login`, you can set `VAV_EMAIL` and `VAV_PASSWORD`. `VAV_TOKEN_FILE` changes
 where the session token is stored.
 
+## MCP server
+
+`otodo-vav-mcp` exposes the radiators to Claude or any other MCP client.
+
+```bash
+pip install "otodo-vav-cli[mcp] @ git+https://github.com/alexandrepa/otodo-vav-cli"
+
+otodo-vav-mcp                                          # stdio, for a local client
+VAV_MCP_SECRET=$(openssl rand -hex 24) \
+  otodo-vav-mcp --http --host 0.0.0.0 --port 8099      # streamable HTTP on /mcp/<secret>
+```
+
+| Tool | Does |
+| --- | --- |
+| `list_radiators` | Room name, id, mode, comfort setpoint and measured temperature of each thermostat |
+| `set_mode` | Sets `auto`, `comfort`, `comfort_minus_1`, `comfort_minus_2`, `eco`, `frost_protection`, `off` or `holidays` |
+| `set_comfort_temperature` | Sets the comfort setpoint, 7–28 °C, rounded to 0.5 |
+| `get_schedule` | Shows the weekly auto-mode schedule |
+| `set_schedule` | Replaces some days of the schedule (`mon-fri` + `06:00=comfort,09:00=eco`), with `dry_run` |
+
+Radiators are named by room (case and accents ignored, partial match allowed), by service id,
+or `all`. The raw request and capability-write tools of the CLI are not exposed.
+
+Credentials come from `VAV_EMAIL` and `VAV_PASSWORD` (the server logs in again if the session
+cannot be refreshed), or from the token file written by `otodo-vav login`. `VAV_MCP_HOST`,
+`VAV_MCP_PORT` and `VAV_MCP_SECRET` set the HTTP options.
+
+The HTTP transport has no authentication of its own: the secret in the URL path is the only
+protection, so serve it over HTTPS (reverse proxy or tunnel) and keep the URL private. A
+non-loopback `--host` is refused without `--secret` unless `--insecure` is given.
+
 ## How the API works
 
 | Item | Value |

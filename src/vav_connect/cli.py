@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from . import schedule
 from .client import HeatingMode, Session, VavClient
 
 
@@ -54,6 +55,31 @@ def _parse_value(raw: str) -> Any:
         return raw
 
 
+def _print_schedule(events: list[dict[str, Any]]) -> None:
+    for day, entries in schedule.describe(events).items():
+        print(f"{day}  {'  '.join(entries) or '-'}")
+
+
+def _new_schedule(client: VavClient, args: argparse.Namespace) -> list[dict[str, Any]]:
+    if args.file:
+        events = json.loads(Path(args.file).read_text())
+    else:
+        events = client.get_schedule(args.hub_id, args.service_id)
+    for days, program in args.day or []:
+        events = schedule.replace_days(events, days, program)
+    return schedule.sort_events(events)
+
+
+class _DayAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        try:
+            days, program = values
+            item = schedule.parse_days(days), schedule.parse_day_program(program)
+        except ValueError as exc:
+            parser.error(str(exc))
+        getattr(namespace, self.dest).append(item)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         prog="vav-connect", description="Unofficial VAV / Otodo API client"
@@ -89,6 +115,32 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("service_id", type=int)
     p.add_argument("temperature", type=float)
 
+    p = sub.add_parser("schedule", help="Show the weekly schedule a service follows in Auto mode")
+    p.add_argument("hub_id")
+    p.add_argument("service_id", type=int)
+    p.add_argument("--json", action="store_true", help="Print the raw weeklyEvents")
+
+    p = sub.add_parser("set-schedule", help="Change the weekly schedule of a service")
+    p.add_argument("hub_id")
+    p.add_argument("service_id", type=int)
+    p.add_argument("--file", help="JSON weeklyEvents to start from, e.g. from `schedule --json`")
+    p.add_argument(
+        "--day",
+        nargs=2,
+        action=_DayAction,
+        default=[],
+        metavar=("DAYS", "PROGRAM"),
+        help="Replace DAYS (mon, mon-fri, sat,sun, all) with PROGRAM "
+        "(06:00=comfort,09:00=eco); repeatable",
+    )
+    p.add_argument("--dry-run", action="store_true", help="Print the new schedule, change nothing")
+
+    p = sub.add_parser("copy-schedule", help="Copy a service's weekly schedule to other services")
+    p.add_argument("hub_id")
+    p.add_argument("source_id", type=int)
+    p.add_argument("target_ids", type=int, nargs="+")
+    p.add_argument("--dry-run", action="store_true", help="Print the schedule, change nothing")
+
     p = sub.add_parser("action", help="Write a device capability value")
     p.add_argument("device_id", type=int)
     p.add_argument("endpoint_index", type=int)
@@ -110,7 +162,35 @@ def main(argv: list[str] | None = None) -> None:
         print(f"Session saved to {_token_file()}")
         return
 
+    if args.cmd == "set-schedule" and not args.file and not args.day:
+        parser.error("set-schedule needs --file or --day")
+
     client = _client_from_env()
+    try:
+        if args.cmd == "schedule":
+            events = client.get_schedule(args.hub_id, args.service_id)
+            if args.json:
+                print(json.dumps(events, indent=2))
+            else:
+                _print_schedule(events)
+            return
+        if args.cmd == "set-schedule":
+            events = _new_schedule(client, args)
+            _print_schedule(events)
+            if not args.dry_run:
+                client.set_schedule(args.hub_id, args.service_id, events)
+            return
+        if args.cmd == "copy-schedule":
+            events = client.get_schedule(args.hub_id, args.source_id)
+            _print_schedule(events)
+            if not args.dry_run:
+                for target_id in args.target_ids:
+                    client.set_schedule(args.hub_id, target_id, events)
+            return
+    finally:
+        if client.session:
+            _save_session(client.session)
+
     commands = {
         "devices": lambda: client.list_devices(),
         "hubs": lambda: client.list_hubs(),

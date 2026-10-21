@@ -239,3 +239,53 @@ def test_cli_persists_refreshed_token(cli_env):
     saved = json.loads(token_file.read_text())
     assert saved["access_token"] == "A2"
     assert saved["expires_at"] is not None
+
+
+def test_set_schedule_puts_sorted_events(server, client):
+    _, log = server
+    client.set_schedule("hub1", 12, [{"d": 2, "mm": 2, "t": 3240}, {"d": 0, "mm": 3, "t": 60}])
+    method, path, _, body = log[-1]
+    assert (method, path) == ("PUT", "/hubs/hub1/local-services/12")
+    assert [e["t"] for e in body["weeklyEvents"]] == [60, 3240]
+    assert body["workingMode"] == 0
+
+
+def test_cli_schedule_prints_days(cli_env, capsys):
+    cli.main(["schedule", "hub1", "12"])
+    out = capsys.readouterr().out.splitlines()
+    assert out[0] == "mon  -"
+    assert out[1] == "tue  07:00 eco"
+
+
+def test_cli_set_schedule_replaces_days(cli_env, capsys):
+    log, _ = cli_env
+    cli.main(["set-schedule", "hub1", "12", "--day", "sat,sun", "08:00=comfort,22:00=eco"])
+    method, path, _, body = log[-1]
+    assert (method, path) == ("PUT", "/hubs/hub1/local-services/12")
+    assert body["weeklyEvents"] == [
+        {"d": 1, "mm": 3, "t": 1860},
+        {"d": 5, "mm": 2, "t": 7680},
+        {"d": 5, "mm": 3, "t": 8520},
+        {"d": 6, "mm": 2, "t": 9120},
+        {"d": 6, "mm": 3, "t": 9960},
+    ]
+    assert "sat  08:00 comfort  22:00 eco" in capsys.readouterr().out
+
+
+def test_cli_set_schedule_dry_run_sends_nothing(cli_env):
+    log, _ = cli_env
+    cli.main(["set-schedule", "hub1", "12", "--day", "all", "06:00=comfort", "--dry-run"])
+    assert all(method == "GET" for method, *_ in log)
+
+
+def test_cli_set_schedule_rejects_bad_program(cli_env):
+    with pytest.raises(SystemExit):
+        cli.main(["set-schedule", "hub1", "12", "--day", "mon", "06:00=hot"])
+
+
+def test_cli_copy_schedule(cli_env):
+    log, _ = cli_env
+    cli.main(["copy-schedule", "hub1", "12", "12"])
+    method, path, _, body = log[-1]
+    assert (method, path) == ("PUT", "/hubs/hub1/local-services/12")
+    assert body["weeklyEvents"] == THERMOSTAT["weeklyEvents"]

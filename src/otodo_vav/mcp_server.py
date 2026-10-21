@@ -97,7 +97,7 @@ class RadiatorController:
             if not hub_id:
                 continue
             for service in self._call(self.client.list_thermostats, hub_id):
-                name = rooms.get(service.get("roomId")) or service.get("name")
+                name = (rooms.get(service.get("roomId")) or service.get("name") or "").strip()
                 radiators.append(Radiator(hub_id, service, name or f"radiator {service['_id']}"))
         return radiators
 

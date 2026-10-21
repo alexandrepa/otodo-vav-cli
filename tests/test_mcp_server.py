@@ -59,7 +59,7 @@ class FakeClient:
         return [
             {"_id": "r1", "name": "Salon"},
             {"_id": "r2", "name": "Chambre Élise"},
-            {"_id": "r3", "name": "Bureau"},
+            {"_id": "r3", "name": "Bureau "},
         ]
 
     def list_hubs(self):

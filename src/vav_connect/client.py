@@ -82,7 +82,7 @@ class VavClient:
     def _headers(self, token: str | None) -> dict[str, str]:
         headers = {
             "Content-type": "application/json",
-            "userAgent": f"pyvav/{APP_VERSION}",
+            "userAgent": f"vav-connect-cli/{APP_VERSION}",
             "language": self.language,
             "mobileVersion": APP_VERSION,
             "timezoneid": self.timezone_id,

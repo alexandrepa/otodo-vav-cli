@@ -5,7 +5,7 @@ from typing import ClassVar
 
 import pytest
 
-from pyvav import HeatingMode, NotAuthenticatedError, VavClient, VavError
+from vav_connect import HeatingMode, NotAuthenticatedError, VavClient, VavError
 
 
 class FakeOtodo(BaseHTTPRequestHandler):

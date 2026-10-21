@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyvav"
+dynamic = ["version"]
+description = "Unofficial Python client for the Otodo cloud API used by the VAV heating app"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Alexandre Patelli" }]
+requires-python = ">=3.10"
+dependencies = ["requests>=2.28"]
+keywords = ["vav", "otodo", "heating", "radiator", "pilot-wire", "smart-home"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Home Automation",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+vav = "pyvav.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/alexandrepa/pyvav"
+Issues = "https://github.com/alexandrepa/pyvav/issues"
+
+[tool.hatch.version]
+path = "src/pyvav/__init__.py"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

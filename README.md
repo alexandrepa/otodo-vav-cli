@@ -1,4 +1,4 @@
-# pyvav
+# vav-connect-cli
 
 Unofficial Python client and CLI for the Otodo cloud API behind the **VAV** heating app
 (`com.otodo.vav`). Use it to read and control your own radiators from scripts or home
@@ -13,7 +13,7 @@ pip install git+https://github.com/alexandrepa/vav-connect-cli
 ## Library
 
 ```python
-from pyvav import HeatingMode, VavClient
+from vav_connect import HeatingMode, VavClient
 
 client = VavClient()
 client.login("you@example.com", "password")
@@ -34,17 +34,17 @@ An expired access token is refreshed automatically once.
 ## CLI
 
 ```bash
-vav login you@example.com          # prompts for the password, stores ~/.vav_token.json (0600)
-vav hubs
-vav devices
-vav services <hubId>
-vav set-mode <hubId> <serviceId> eco
-vav set-temp <hubId> <serviceId> 20.5
-vav action <deviceId> <endpointIndex> <capabilityId> 19.5
-vav raw GET /rooms
+vav-connect login you@example.com          # prompts for the password, stores ~/.vav_token.json (0600)
+vav-connect hubs
+vav-connect devices
+vav-connect services <hubId>
+vav-connect set-mode <hubId> <serviceId> eco
+vav-connect set-temp <hubId> <serviceId> 20.5
+vav-connect action <deviceId> <endpointIndex> <capabilityId> 19.5
+vav-connect raw GET /rooms
 ```
 
-Instead of `vav login`, you can set `VAV_EMAIL` and `VAV_PASSWORD`. `VAV_TOKEN_FILE` changes
+Instead of `vav-connect login`, you can set `VAV_EMAIL` and `VAV_PASSWORD`. `VAV_TOKEN_FILE` changes
 where the session token is stored.
 
 ## How the API works
@@ -87,7 +87,7 @@ Device capabilities can also be written directly with
 
 Devices, hubs, homes, rooms, settings, energy coaching (`/homes/coaching/...`), energy
 consumption (`/consumptions/...`), weather history (`/weather/...`) and alerts. See
-`src/pyvav/client.py`.
+`src/vav_connect/client.py`.
 
 ### Not supported
 

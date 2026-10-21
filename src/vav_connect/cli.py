@@ -33,7 +33,7 @@ def _client_from_env() -> VavClient:
         return client
     email, password = os.environ.get("VAV_EMAIL"), os.environ.get("VAV_PASSWORD")
     if not email or not password:
-        sys.exit("Run `vav login EMAIL` or set VAV_EMAIL and VAV_PASSWORD")
+        sys.exit("Run `vav-connect login EMAIL` or set VAV_EMAIL and VAV_PASSWORD")
     client.login(email, password)
     _save_session(client.session)
     return client
@@ -47,7 +47,9 @@ def _parse_value(raw: str) -> Any:
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="vav", description="Unofficial VAV / Otodo API client")
+    parser = argparse.ArgumentParser(
+        prog="vav-connect", description="Unofficial VAV / Otodo API client"
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("login", help="Authenticate and store the session token")

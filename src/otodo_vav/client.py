@@ -105,7 +105,7 @@ class VavClient:
     def _headers(self, token: str | None) -> dict[str, str]:
         headers = {
             "Content-type": "application/json",
-            "userAgent": f"vav-connect-cli/{APP_VERSION}",
+            "userAgent": f"otodo-vav-cli/{APP_VERSION}",
             "language": self.language,
             "mobileVersion": APP_VERSION,
             "timezoneid": self.timezone_id,
@@ -344,7 +344,7 @@ class VavClient:
         return self.update_heating_service(hub_id, service)
 
     def get_schedule(self, hub_id: str, service_id: int) -> list[dict[str, Any]]:
-        """The `weeklyEvents` a service follows in Auto mode (see `vav_connect.schedule`)."""
+        """The `weeklyEvents` a service follows in Auto mode (see `otodo_vav.schedule`)."""
         return self.get_heating_service(hub_id, service_id).get("weeklyEvents") or []
 
     def set_schedule(self, hub_id: str, service_id: int, events: list[dict[str, Any]]) -> Any:

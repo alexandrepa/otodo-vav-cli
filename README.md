@@ -42,6 +42,7 @@ client.measured_temperatures()  # {device_id: °C}
 
 # Weekly schedule followed in Auto mode
 from vav_connect import schedule
+
 events = client.get_schedule(hub_id, 12)
 events = schedule.replace_days(
     events, schedule.parse_days("sat,sun"), schedule.parse_day_program("08:00=comfort,23:00=eco")
@@ -125,11 +126,10 @@ looks like this (abridged, illustrative values):
 
 `modules` links the service to the radiators it drives. `weeklyEvents` is the schedule used in
 Auto mode: each event switches the service to mode `mm` at minute `t` of the week, on day `d`
-(`t = d × 1440 + minute of the day`). Day 0 is taken to be Sunday, as in
-homebridge-otodo-vav. `mm` is read as the pilot-wire value, 2 = comfort and 3 = eco: the
-schedule the app creates by default then reads comfort 06:00–09:00 and 18:00–23:00, eco
-otherwise. homebridge-otodo-vav documents the opposite (2 = eco, 3 = comfort) without using it.
-Neither point has been confirmed by editing a schedule in the app.
+(`t = d × 1440 + minute of the day`). Day 0 is **Monday** and `mm` is the pilot-wire value,
+2 = comfort and 3 = eco; both were checked by editing a schedule in the app (homebridge-otodo-vav
+documents Sunday and the opposite modes). The app's default schedule is comfort 06:00–09:00 and
+18:00–23:00, eco otherwise.
 
 | Mode | `workingMode` | Pilot-wire device value |
 | --- | --- | --- |

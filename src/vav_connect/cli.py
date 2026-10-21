@@ -20,7 +20,13 @@ def _save_session(session: Session) -> None:
     path.touch(mode=0o600, exist_ok=True)
     path.chmod(0o600)
     path.write_text(
-        json.dumps({"access_token": session.access_token, "refresh_token": session.refresh_token})
+        json.dumps(
+            {
+                "access_token": session.access_token,
+                "refresh_token": session.refresh_token,
+                "expires_at": session.expires_at,
+            }
+        )
     )
 
 
@@ -29,7 +35,9 @@ def _client_from_env() -> VavClient:
     path = _token_file()
     if path.exists():
         data = json.loads(path.read_text())
-        client.session = Session(data["access_token"], data.get("refresh_token"))
+        client.session = Session(
+            data["access_token"], data.get("refresh_token"), expires_at=data.get("expires_at")
+        )
         return client
     email, password = os.environ.get("VAV_EMAIL"), os.environ.get("VAV_PASSWORD")
     if not email or not password:
@@ -60,26 +68,31 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("rooms", help="List rooms")
     sub.add_parser("homes", help="List homes")
 
+    sub.add_parser("temps", help="Measured temperature (°C) per device")
+
     p = sub.add_parser("device", help="Show one device")
-    p.add_argument("device_id")
+    p.add_argument("device_id", type=int)
 
     p = sub.add_parser("services", help="List the heating services of a hub")
     p.add_argument("hub_id")
 
+    p = sub.add_parser("thermostats", help="List the thermostat services of a hub")
+    p.add_argument("hub_id")
+
     p = sub.add_parser("set-mode", help="Change a heating service mode")
     p.add_argument("hub_id")
-    p.add_argument("service_id")
+    p.add_argument("service_id", type=int)
     p.add_argument("mode", choices=[m.name.lower() for m in HeatingMode])
 
     p = sub.add_parser("set-temp", help="Change a heating service comfort setpoint")
     p.add_argument("hub_id")
-    p.add_argument("service_id")
+    p.add_argument("service_id", type=int)
     p.add_argument("temperature", type=float)
 
     p = sub.add_parser("action", help="Write a device capability value")
-    p.add_argument("device_id")
+    p.add_argument("device_id", type=int)
     p.add_argument("endpoint_index", type=int)
-    p.add_argument("capability_id")
+    p.add_argument("capability_id", type=int)
     p.add_argument("value", help='JSON value, e.g. 19.5, true, "on"')
 
     p = sub.add_parser("raw", help="Send an arbitrary authenticated request")
@@ -103,8 +116,10 @@ def main(argv: list[str] | None = None) -> None:
         "hubs": lambda: client.list_hubs(),
         "rooms": lambda: client.list_rooms(),
         "homes": lambda: client.list_homes(),
+        "temps": lambda: client.measured_temperatures(),
         "device": lambda: client.get_device(args.device_id),
         "services": lambda: client.list_heating_services(args.hub_id),
+        "thermostats": lambda: client.list_thermostats(args.hub_id),
         "set-mode": lambda: client.set_heating_mode(
             args.hub_id, args.service_id, HeatingMode[args.mode.upper()]
         ),

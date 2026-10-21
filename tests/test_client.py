@@ -24,6 +24,18 @@ DEVICES = [
         "endpoints": [{"capabilities": [{"_id": 1, "value": 2}, {"_id": 4, "value": 2925}]}],
     },
     {"_id": 8, "endpoints": [{"capabilities": [{"_id": 1, "value": 0}]}]},
+    {
+        "_id": 9,
+        "endpoints": [
+            {
+                "capabilities": [
+                    {"_id": 4, "value": 2921},
+                    {"_id": 15, "value": 60.85},
+                    {"_id": 20, "value": 100},
+                ]
+            }
+        ],
+    },
 ]
 
 
@@ -198,7 +210,14 @@ def test_unknown_service_raises(server, client):
 
 
 def test_measured_temperatures(server, client):
-    assert client.measured_temperatures() == {7: 19.4}
+    assert client.measured_temperatures() == {7: 19.4, 9: 19.0}
+
+
+def test_sensor_readings(server, client):
+    assert client.sensor_readings() == {
+        7: {"temperature": 19.4},
+        9: {"temperature": 19.0, "humidity": 60.85, "battery": 100},
+    }
 
 
 def test_energy_query_omits_unset_params(server, client):

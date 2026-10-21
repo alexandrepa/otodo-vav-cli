@@ -68,8 +68,11 @@ class FakeClient:
     def list_thermostats(self, hub_id):
         return [s for s in self.services if s["type"] == "thermostat"]
 
-    def measured_temperatures(self):
-        return {9: 17.5, 20: 19.0}
+    def sensor_readings(self):
+        return {
+            9: {"temperature": 17.5},
+            20: {"temperature": 19.0, "humidity": 60.85, "battery": 100},
+        }
 
     def _service(self, service_id):
         return next(s for s in self.services if s["_id"] == service_id)
@@ -103,6 +106,8 @@ def test_list_radiators_uses_room_names_and_device_temperature(controller):
             "mode": "auto",
             "comfort_temperature": 19,
             "measured_temperature": 18.4,
+            "humidity": None,
+            "battery": None,
             "active": True,
         },
         {
@@ -111,6 +116,8 @@ def test_list_radiators_uses_room_names_and_device_temperature(controller):
             "mode": "eco",
             "comfort_temperature": 20,
             "measured_temperature": 17.5,
+            "humidity": None,
+            "battery": None,
             "active": True,
         },
         {
@@ -119,6 +126,8 @@ def test_list_radiators_uses_room_names_and_device_temperature(controller):
             "mode": "auto",
             "comfort_temperature": 19,
             "measured_temperature": 19.0,
+            "humidity": 60.85,
+            "battery": 100,
             "active": True,
         },
     ]

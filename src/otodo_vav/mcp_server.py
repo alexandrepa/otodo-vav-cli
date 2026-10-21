@@ -123,7 +123,9 @@ class RadiatorController:
                 selected.append(matches[0])
         return selected
 
-    def _summary(self, radiator: Radiator, measured: dict[int, float]) -> dict[str, Any]:
+    def _summary(
+        self, radiator: Radiator, readings: dict[int, dict[str, float]]
+    ) -> dict[str, Any]:
         service = radiator.service
         try:
             mode = HeatingMode(service.get("workingMode")).name.lower()
@@ -131,23 +133,27 @@ class RadiatorController:
             mode = f"unknown ({service.get('workingMode')})"
         temperature = (service.get("sensors") or {}).get("temp")
         if isinstance(temperature, dict):
-            # A reference to the room's temperature sensor: {deviceId, endpointIndex, capabilityId}
-            temperature = measured.get(temperature.get("deviceId"))
-        if not isinstance(temperature, (int, float)):
-            temperature = next(
+            # A reference to the room's sensor: {deviceId, endpointIndex, capabilityId}
+            sensor = readings.get(temperature.get("deviceId"), {})
+        else:
+            sensor = next(
                 (
-                    measured[m["deviceId"]]
+                    readings[m["deviceId"]]
                     for m in service.get("modules") or []
-                    if m.get("deviceId") in measured
+                    if m.get("deviceId") in readings
                 ),
-                None,
+                {},
             )
+        if not isinstance(temperature, (int, float)):
+            temperature = sensor.get("temperature")
         return {
             "id": radiator.id,
             "name": radiator.name,
             "mode": mode,
             "comfort_temperature": service.get("comfortTemp"),
             "measured_temperature": temperature,
+            "humidity": sensor.get("humidity"),
+            "battery": sensor.get("battery"),
             "active": service.get("isActive", True),
         }
 
@@ -156,12 +162,8 @@ class RadiatorController:
     def list_radiators(self) -> list[dict[str, Any]]:
         with self._lock:
             radiators = self._radiators()
-            needs_devices = any(
-                not isinstance((r.service.get("sensors") or {}).get("temp"), (int, float))
-                for r in radiators
-            )
-            measured = self._call(self.client.measured_temperatures) if needs_devices else {}
-            return [self._summary(r, measured) for r in radiators]
+            readings = self._call(self.client.sensor_readings)
+            return [self._summary(r, readings) for r in radiators]
 
     def set_mode(self, targets: list[str], mode: str) -> list[dict[str, Any]]:
         try:
@@ -232,7 +234,8 @@ def build_server(controller: RadiatorController) -> MCPServer:
 
     @server.tool()
     def list_radiators() -> list[dict[str, Any]]:
-        """List radiators with their room name, id, mode, comfort setpoint and measured °C."""
+        """List radiators: room name, id, mode, comfort setpoint, and the room sensor's
+        measured temperature (°C), relative humidity (%) and battery level (%)."""
         return controller.list_radiators()
 
     @server.tool()

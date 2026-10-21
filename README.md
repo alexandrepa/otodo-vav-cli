@@ -25,6 +25,7 @@ client.set_heating_mode(hub_id, 12, HeatingMode.ECO)
 client.set_comfort_temperature(hub_id, 12, 20.5)
 
 client.measured_temperatures()  # {device_id: °C}
+client.sensor_readings()  # {device_id: {"temperature": °C, "humidity": %, "battery": %}}
 
 # Weekly schedule followed in Auto mode
 from otodo_vav import schedule
@@ -84,7 +85,7 @@ VAV_MCP_SECRET=$(openssl rand -hex 24) \
 
 | Tool | Does |
 | --- | --- |
-| `list_radiators` | Room name, id, mode, comfort setpoint and measured temperature of each thermostat |
+| `list_radiators` | Room name, id, mode, comfort setpoint, and measured temperature, humidity and sensor battery of each thermostat |
 | `set_mode` | Sets `auto`, `comfort`, `comfort_minus_1`, `comfort_minus_2`, `eco`, `frost_protection`, `off` or `holidays` |
 | `set_comfort_temperature` | Sets the comfort setpoint, 7–28 °C, rounded to 0.5 |
 | `get_schedule` | Shows the weekly auto-mode schedule |
@@ -142,7 +143,8 @@ looks like this (abridged, illustrative values):
 ```
 
 `modules` links the service to the radiators it drives, and `sensors.temp` to the room's
-temperature sensor (capability 4 of that device holds the measured temperature). `weeklyEvents` is the schedule used in
+sensor (capability 4 of that device holds the measured temperature, 15 the relative
+humidity and 20 the battery level, both in %). `weeklyEvents` is the schedule used in
 Auto mode: each event switches the service to mode `mm` at minute `t` of the week, on day `d`
 (`t = d × 1440 + minute of the day`). Day 0 is **Monday** and `mm` is the pilot-wire value,
 2 = comfort and 3 = eco; both were checked by editing a schedule in the app (homebridge-otodo-vav

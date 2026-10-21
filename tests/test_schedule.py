@@ -22,10 +22,10 @@ def test_sort_events_rejects_t_outside_its_day():
 @pytest.mark.parametrize(
     ("raw", "days"),
     [
-        ("mon", [1]),
-        ("mon-fri", [1, 2, 3, 4, 5]),
-        ("sat,sun", [6, 0]),
-        ("fri-mon", [5, 6, 0, 1]),
+        ("mon", [0]),
+        ("mon-fri", [0, 1, 2, 3, 4]),
+        ("sat,sun", [5, 6]),
+        ("sat-tue", [5, 6, 0, 1]),
         ("all", [0, 1, 2, 3, 4, 5, 6]),
     ],
 )
@@ -52,16 +52,16 @@ def test_parse_day_program_rejects_bad_items(raw):
 def test_describe_default_schedule():
     described = schedule.describe(DEFAULT)
     assert list(described) == list(schedule.DAYS)
-    assert described["sun"] == ["06:00 comfort", "09:00 eco", "18:00 comfort", "23:00 eco"]
+    assert described["mon"] == ["06:00 comfort", "09:00 eco", "18:00 comfort", "23:00 eco"]
 
 
 def test_describe_shows_unknown_modes_raw():
-    assert schedule.describe([{"d": 2, "mm": 9, "t": 2940}])["tue"] == ["01:00 mm=9"]
+    assert schedule.describe([{"d": 2, "mm": 9, "t": 2940}])["wed"] == ["01:00 mm=9"]
 
 
 def test_replace_days_keeps_other_days():
-    events = schedule.replace_days(DEFAULT, [6, 0], [(480, 2), (1380, 3)])
+    events = schedule.replace_days(DEFAULT, [5, 6], [(480, 2), (1380, 3)])
     described = schedule.describe(events)
     assert described["sat"] == described["sun"] == ["08:00 comfort", "23:00 eco"]
-    assert described["mon"] == schedule.describe(DEFAULT)["mon"]
+    assert described["fri"] == schedule.describe(DEFAULT)["fri"]
     assert [e["t"] for e in events] == sorted(e["t"] for e in events)

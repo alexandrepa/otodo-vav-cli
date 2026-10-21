@@ -253,8 +253,8 @@ def test_set_schedule_puts_sorted_events(server, client):
 def test_cli_schedule_prints_days(cli_env, capsys):
     cli.main(["schedule", "hub1", "12"])
     out = capsys.readouterr().out.splitlines()
-    assert out[0] == "sun  -"
-    assert out[1] == "mon  07:00 eco"
+    assert out[0] == "mon  -"
+    assert out[1] == "tue  07:00 eco"
 
 
 def test_cli_set_schedule_replaces_days(cli_env, capsys):
@@ -263,9 +263,9 @@ def test_cli_set_schedule_replaces_days(cli_env, capsys):
     method, path, _, body = log[-1]
     assert (method, path) == ("PUT", "/hubs/hub1/local-services/12")
     assert body["weeklyEvents"] == [
-        {"d": 0, "mm": 2, "t": 480},
-        {"d": 0, "mm": 3, "t": 1320},
         {"d": 1, "mm": 3, "t": 1860},
+        {"d": 5, "mm": 2, "t": 7680},
+        {"d": 5, "mm": 3, "t": 8520},
         {"d": 6, "mm": 2, "t": 9120},
         {"d": 6, "mm": 3, "t": 9960},
     ]

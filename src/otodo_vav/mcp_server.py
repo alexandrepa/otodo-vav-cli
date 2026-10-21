@@ -12,7 +12,7 @@ import sys
 import threading
 import unicodedata
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -24,6 +24,8 @@ MIN_COMFORT_TEMP = 7.0
 MAX_COMFORT_TEMP = 28.0
 
 MODES = [m.name.lower() for m in HeatingMode]
+# Listed in the tool schema, so clients that rewrite schemas (Home Assistant) keep the choices
+Mode = Literal[tuple(MODES)]  # type: ignore[valid-type]
 
 INSTRUCTIONS = f"""\
 Controls the VAV pilot-wire radiators of a home.
@@ -231,7 +233,7 @@ def build_server(controller: RadiatorController) -> MCPServer:
         return controller.list_radiators()
 
     @server.tool()
-    def set_mode(radiators: list[str], mode: str) -> list[dict[str, Any]]:
+    def set_mode(radiators: list[str], mode: Mode) -> list[dict[str, Any]]:
         """Change the heating mode of radiators.
 
         radiators: room names or ids from list_radiators, or ["all"].

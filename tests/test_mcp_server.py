@@ -223,3 +223,9 @@ def test_tools_are_exposed(controller, fake):
     }
     assert not result.is_error
     assert fake.calls == [("mode", "hub1", 12, HeatingMode.ECO)]
+
+
+def test_set_mode_schema_lists_the_modes(controller):
+    tools = anyio.run(build_server(controller).list_tools)
+    schema = next(t for t in tools if t.name == "set_mode").input_schema
+    assert schema["properties"]["mode"]["enum"] == mcp_server.MODES

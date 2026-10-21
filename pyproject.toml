@@ -21,10 +21,12 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.5"]
+mcp = ["mcp>=2.3,<3"]
+dev = ["pytest>=8", "ruff>=0.5", "mcp>=2.3,<3"]
 
 [project.scripts]
 otodo-vav = "otodo_vav.cli:main"
+otodo-vav-mcp = "otodo_vav.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/alexandrepa/otodo-vav-cli"

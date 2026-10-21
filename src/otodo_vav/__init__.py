@@ -2,6 +2,8 @@
 
 from .client import (
     BASE_URL,
+    BATTERY_CAPABILITY_ID,
+    HUMIDITY_CAPABILITY_ID,
     PILOT_WIRE_VALUE,
     TEMPERATURE_CAPABILITY_ID,
     HeatingMode,
@@ -15,7 +17,9 @@ from .schedule import DAYS, SCHEDULE_MODES
 
 __all__ = [
     "BASE_URL",
+    "BATTERY_CAPABILITY_ID",
     "DAYS",
+    "HUMIDITY_CAPABILITY_ID",
     "PILOT_WIRE_VALUE",
     "SCHEDULE_MODES",
     "TEMPERATURE_CAPABILITY_ID",

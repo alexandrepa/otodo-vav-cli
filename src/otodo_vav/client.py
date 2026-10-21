@@ -43,6 +43,9 @@ PILOT_WIRE_VALUE = {
 
 # Device capability holding the measured temperature, in tenths of a kelvin.
 TEMPERATURE_CAPABILITY_ID = 4
+# Capabilities of the room sensors holding the relative humidity and the battery level, in %.
+HUMIDITY_CAPABILITY_ID = 15
+BATTERY_CAPABILITY_ID = 20
 _KELVIN_X10_AT_0C = 2731
 
 
@@ -278,23 +281,37 @@ class VavClient:
     def remove_device_favorite(self, device_id: int) -> Any:
         return self.request("POST", f"/devices/{device_id}/remove-favorite")
 
+    def sensor_readings(self) -> dict[int, dict[str, float]]:
+        """Readings per device id: "temperature" (°C), "humidity" and "battery" (%).
+
+        Only the readings a device reports are included; devices with none are left out.
+        """
+        names = {
+            TEMPERATURE_CAPABILITY_ID: "temperature",
+            HUMIDITY_CAPABILITY_ID: "humidity",
+            BATTERY_CAPABILITY_ID: "battery",
+        }
+        readings: dict[int, dict[str, float]] = {}
+        for device in self.list_devices() or []:
+            found: dict[str, float] = {}
+            for endpoint in device.get("endpoints") or []:
+                for capability in endpoint.get("capabilities") or []:
+                    name, value = names.get(capability.get("_id")), capability.get("value")
+                    if name and name not in found and isinstance(value, (int, float)):
+                        if name == "temperature":
+                            value = kelvin_x10_to_celsius(value)
+                        found[name] = value
+            if found:
+                readings[device["_id"]] = found
+        return readings
+
     def measured_temperatures(self) -> dict[int, float]:
         """Measured temperature in °C per device id, for devices that report one."""
-        temperatures = {}
-        for device in self.list_devices() or []:
-            for endpoint in device.get("endpoints") or []:
-                capability = next(
-                    (
-                        c
-                        for c in endpoint.get("capabilities") or []
-                        if c.get("_id") == TEMPERATURE_CAPABILITY_ID
-                    ),
-                    None,
-                )
-                if capability is not None and isinstance(capability.get("value"), (int, float)):
-                    temperatures[device["_id"]] = kelvin_x10_to_celsius(capability["value"])
-                    break
-        return temperatures
+        return {
+            device_id: values["temperature"]
+            for device_id, values in self.sensor_readings().items()
+            if "temperature" in values
+        }
 
     # --- hubs ------------------------------------------------------------
 

@@ -25,6 +25,7 @@ client.set_heating_mode(hub_id, 12, HeatingMode.ECO)
 client.set_comfort_temperature(hub_id, 12, 20.5)
 
 client.measured_temperatures()  # {device_id: °C}
+client.sensor_readings()  # {device_id: {"temperature": °C, "humidity": %, "battery": %}}
 
 # Weekly schedule followed in Auto mode
 from otodo_vav import schedule
@@ -70,6 +71,37 @@ output of `schedule --json`) and replaces each day given with `--day`; other day
 Instead of `otodo-vav login`, you can set `VAV_EMAIL` and `VAV_PASSWORD`. `VAV_TOKEN_FILE` changes
 where the session token is stored.
 
+## MCP server
+
+`otodo-vav-mcp` exposes the radiators to Claude or any other MCP client.
+
+```bash
+pip install "otodo-vav-cli[mcp] @ git+https://github.com/alexandrepa/otodo-vav-cli"
+
+otodo-vav-mcp                                          # stdio, for a local client
+VAV_MCP_SECRET=$(openssl rand -hex 24) \
+  otodo-vav-mcp --http --host 0.0.0.0 --port 8099      # streamable HTTP on /mcp/<secret>
+```
+
+| Tool | Does |
+| --- | --- |
+| `list_radiators` | Room name, id, mode, comfort setpoint, and measured temperature, humidity and sensor battery of each thermostat |
+| `set_mode` | Sets `auto`, `comfort`, `comfort_minus_1`, `comfort_minus_2`, `eco`, `frost_protection`, `off` or `holidays` |
+| `set_comfort_temperature` | Sets the comfort setpoint, 7–28 °C, rounded to 0.5 |
+| `get_schedule` | Shows the weekly auto-mode schedule |
+| `set_schedule` | Replaces some days of the schedule (`mon-fri` + `06:00=comfort,09:00=eco`), with `dry_run` |
+
+Radiators are named by room (case and accents ignored, partial match allowed), by service id,
+or `all`. The raw request and capability-write tools of the CLI are not exposed.
+
+Credentials come from `VAV_EMAIL` and `VAV_PASSWORD` (the server logs in again if the session
+cannot be refreshed), or from the token file written by `otodo-vav login`. `VAV_MCP_HOST`,
+`VAV_MCP_PORT` and `VAV_MCP_SECRET` set the HTTP options.
+
+The HTTP transport has no authentication of its own: the secret in the URL path is the only
+protection, so serve it over HTTPS (reverse proxy or tunnel) and keep the URL private. A
+non-loopback `--host` is refused without `--secret` unless `--insecure` is given.
+
 ## How the API works
 
 | Item | Value |
@@ -101,7 +133,7 @@ looks like this (abridged, illustrative values):
   "isActive": true,
   "workingMode": 0,
   "comfortTemp": 19,
-  "sensors": {"temp": 18.4},
+  "sensors": {"temp": {"deviceId": 8, "endpointIndex": 0, "capabilityId": 4}},
   "modules": [{"deviceId": 7, "endpointIndex": 0, "capabilityId": 1}],
   "weeklyEvents": [{"d": 1, "t": 1860, "mm": 3}],
   "hysteresis": 0.5,
@@ -110,7 +142,9 @@ looks like this (abridged, illustrative values):
 }
 ```
 
-`modules` links the service to the radiators it drives. `weeklyEvents` is the schedule used in
+`modules` links the service to the radiators it drives, and `sensors.temp` to the room's
+sensor (capability 4 of that device holds the measured temperature, 15 the relative
+humidity and 20 the battery level, both in %). `weeklyEvents` is the schedule used in
 Auto mode: each event switches the service to mode `mm` at minute `t` of the week, on day `d`
 (`t = d × 1440 + minute of the day`). Day 0 is **Monday** and `mm` is the pilot-wire value,
 2 = comfort and 3 = eco; both were checked by editing a schedule in the app (homebridge-otodo-vav

@@ -3,7 +3,7 @@ requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vav-connect-cli"
+name = "otodo-vav-cli"
 dynamic = ["version"]
 description = "Unofficial Python client for the Otodo cloud API used by the VAV heating app"
 readme = "README.md"
@@ -24,17 +24,17 @@ classifiers = [
 dev = ["pytest>=8", "ruff>=0.5"]
 
 [project.scripts]
-vav-connect = "vav_connect.cli:main"
+otodo-vav = "otodo_vav.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/alexandrepa/vav-connect-cli"
-Issues = "https://github.com/alexandrepa/vav-connect-cli/issues"
+Homepage = "https://github.com/alexandrepa/otodo-vav-cli"
+Issues = "https://github.com/alexandrepa/otodo-vav-cli/issues"
 
 [tool.hatch.version]
-path = "src/vav_connect/__init__.py"
+path = "src/otodo_vav/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/vav_connect"]
+packages = ["src/otodo_vav"]
 
 [tool.ruff]
 line-length = 100

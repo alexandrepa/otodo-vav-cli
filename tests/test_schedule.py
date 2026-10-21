@@ -1,6 +1,6 @@
 import pytest
 
-from vav_connect import schedule
+from otodo_vav import schedule
 
 # Default schedule observed on a real account: same program every day.
 DEFAULT = [

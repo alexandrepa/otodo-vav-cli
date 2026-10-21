@@ -6,7 +6,7 @@ from typing import ClassVar
 
 import pytest
 
-from vav_connect import HeatingMode, NotAuthenticatedError, VavClient, VavError, cli
+from otodo_vav import HeatingMode, NotAuthenticatedError, VavClient, VavError, cli
 
 THERMOSTAT = {
     "_id": 12,

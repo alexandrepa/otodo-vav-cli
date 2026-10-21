@@ -3,10 +3,9 @@
 Each event switches the service to a mode at a minute of the week:
 `{"d": day, "t": minute_of_week, "mm": mode}` with `t = d * 1440 + minute_of_day`.
 
-Day 0 is Sunday (as in homebridge-otodo-vav). The `mm` values match the pilot-wire
-values (2 = comfort, 3 = eco): the schedule the app creates by default reads
-comfort 06:00-09:00 and 18:00-23:00, eco otherwise. Neither has been confirmed by
-editing a schedule in the app.
+Day 0 is Monday and `mm` uses the pilot-wire values (2 = comfort, 3 = eco): moving
+Monday's first comfort period to 05:00 in the app turned `{"d": 0, "mm": 2, "t": 360}`
+into `t: 300`.
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 MINUTES_PER_DAY = 1440
-DAYS = ("sun", "mon", "tue", "wed", "thu", "fri", "sat")
+DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 SCHEDULE_MODES = {"comfort": 2, "eco": 3}
 _MODE_NAMES = {value: name for name, value in SCHEDULE_MODES.items()}
@@ -97,7 +96,7 @@ def replace_days(
 
 
 def describe(events: list[dict[str, Any]]) -> dict[str, list[str]]:
-    """{'sun': ['06:00 comfort', ...], ...} for every day, in week order."""
+    """{'mon': ['06:00 comfort', ...], ...} for every day, in week order."""
     out: dict[str, list[str]] = {day: [] for day in DAYS}
     for event in sort_events(events):
         mode = _MODE_NAMES.get(event["mm"], f"mm={event['mm']}")

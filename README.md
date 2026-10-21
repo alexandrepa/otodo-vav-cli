@@ -54,7 +54,7 @@ otodo-vav services <hubId>
 otodo-vav thermostats <hubId>              # services of type "thermostat" only
 otodo-vav set-mode <hubId> <serviceId> eco
 otodo-vav set-temp <hubId> <serviceId> 20.5
-otodo-vav schedule <hubId> <serviceId>      # weekly schedule followed in Auto mode
+otodo-vav schedule <hubId> <serviceId>     # weekly schedule followed in Auto mode
 otodo-vav set-schedule <hubId> <serviceId> --day mon-fri 06:00=comfort,09:00=eco,18:00=comfort,23:00=eco
 otodo-vav set-schedule <hubId> <serviceId> --day sat,sun 08:00=comfort,23:00=eco --dry-run
 otodo-vav copy-schedule <hubId> <sourceServiceId> <targetServiceId>...

@@ -1,4 +1,4 @@
-# vav-connect-cli
+# otodo-vav-cli
 
 Unofficial Python client and CLI for the Otodo cloud API behind the **VAV** heating app
 (`com.otodo.vav`). Use it to read and control your own radiators from scripts or home
@@ -7,13 +7,13 @@ automation.
 ## Install
 
 ```bash
-pip install git+https://github.com/alexandrepa/vav-connect-cli
+pip install git+https://github.com/alexandrepa/otodo-vav-cli
 ```
 
 ## Library
 
 ```python
-from vav_connect import HeatingMode, VavClient
+from otodo_vav import HeatingMode, VavClient
 
 client = VavClient()
 client.login("you@example.com", "password")
@@ -27,7 +27,7 @@ client.set_comfort_temperature(hub_id, 12, 20.5)
 client.measured_temperatures()  # {device_id: °C}
 
 # Weekly schedule followed in Auto mode
-from vav_connect import schedule
+from otodo_vav import schedule
 
 events = client.get_schedule(hub_id, 12)
 events = schedule.replace_days(
@@ -46,20 +46,20 @@ margin set by `refresh_margin`, 5 minutes by default) and once more if a request
 ## CLI
 
 ```bash
-vav-connect login you@example.com          # prompts for the password, stores ~/.vav_token.json (0600)
-vav-connect hubs
-vav-connect devices
-vav-connect temps                          # measured temperature per device
-vav-connect services <hubId>
-vav-connect thermostats <hubId>            # services of type "thermostat" only
-vav-connect set-mode <hubId> <serviceId> eco
-vav-connect set-temp <hubId> <serviceId> 20.5
-vav-connect schedule <hubId> <serviceId>  # weekly schedule followed in Auto mode
-vav-connect set-schedule <hubId> <serviceId> --day mon-fri 06:00=comfort,09:00=eco,18:00=comfort,23:00=eco
-vav-connect set-schedule <hubId> <serviceId> --day sat,sun 08:00=comfort,23:00=eco --dry-run
-vav-connect copy-schedule <hubId> <sourceServiceId> <targetServiceId>...
-vav-connect action <deviceId> <endpointIndex> <capabilityId> 19.5
-vav-connect raw GET /rooms
+otodo-vav login you@example.com            # prompts for the password, stores ~/.vav_token.json (0600)
+otodo-vav hubs
+otodo-vav devices
+otodo-vav temps                            # measured temperature per device
+otodo-vav services <hubId>
+otodo-vav thermostats <hubId>              # services of type "thermostat" only
+otodo-vav set-mode <hubId> <serviceId> eco
+otodo-vav set-temp <hubId> <serviceId> 20.5
+otodo-vav schedule <hubId> <serviceId>      # weekly schedule followed in Auto mode
+otodo-vav set-schedule <hubId> <serviceId> --day mon-fri 06:00=comfort,09:00=eco,18:00=comfort,23:00=eco
+otodo-vav set-schedule <hubId> <serviceId> --day sat,sun 08:00=comfort,23:00=eco --dry-run
+otodo-vav copy-schedule <hubId> <sourceServiceId> <targetServiceId>...
+otodo-vav action <deviceId> <endpointIndex> <capabilityId> 19.5
+otodo-vav raw GET /rooms
 ```
 
 `set-schedule` starts from the current schedule (or from `--file`, a JSON list such as the
@@ -67,7 +67,7 @@ output of `schedule --json`) and replaces each day given with `--day`; other day
 `--dry-run` prints the result without sending it. The schedule only applies in `auto` mode
 (`set-mode <hubId> <serviceId> auto`).
 
-Instead of `vav-connect login`, you can set `VAV_EMAIL` and `VAV_PASSWORD`. `VAV_TOKEN_FILE` changes
+Instead of `otodo-vav login`, you can set `VAV_EMAIL` and `VAV_PASSWORD`. `VAV_TOKEN_FILE` changes
 where the session token is stored.
 
 ## How the API works
@@ -142,7 +142,7 @@ holds the measured temperature in tenths of a kelvin: °C = (value − 2731) / 1
 
 Devices, hubs, homes, rooms, settings, energy coaching (`/homes/coaching/...`), energy
 consumption (`/consumptions/...`), weather history (`/weather/...`) and alerts. See
-`src/vav_connect/client.py`.
+`src/otodo_vav/client.py`.
 
 ### Not supported
 

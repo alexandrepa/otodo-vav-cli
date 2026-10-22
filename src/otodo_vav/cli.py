@@ -5,11 +5,14 @@ import getpass
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
-from . import schedule
-from .client import HeatingMode, Session, VavClient
+import requests
+
+from . import presence, schedule
+from .client import HeatingMode, Session, VavClient, VavError
 
 
 def _token_file() -> Path:
@@ -68,6 +71,39 @@ def _new_schedule(client: VavClient, args: argparse.Namespace) -> list[dict[str,
     for days, program in args.day or []:
         events = schedule.replace_days(events, days, program)
     return schedule.sort_events(events)
+
+
+def _bbox_from_args(args: argparse.Namespace) -> presence.BboxClient:
+    return presence.BboxClient(args.bbox_url, os.environ.get("BBOX_PASSWORD"))
+
+
+def _hub_ids(client: VavClient, args: argparse.Namespace) -> list[str]:
+    if args.hub:
+        return args.hub
+    return [hub.get("_id") or hub["id"] for hub in client.list_hubs() or []]
+
+
+def _presence_watch(client: VavClient, args: argparse.Namespace) -> None:
+    notify = presence.ntfy_notifier(args.ntfy_topic, args.ntfy_server) if args.ntfy_topic else print
+    watcher = presence.PresenceWatcher(
+        client,
+        _bbox_from_args(args),
+        args.phone,
+        _hub_ids(client, args),
+        away_after=args.away_after * 60,
+        notify=notify,
+        set_eco=args.set_eco,
+    )
+    print(f"Watching {len(watcher.phones)} phone(s) on hubs {', '.join(watcher.hub_ids)}")
+    while True:
+        try:
+            watcher.tick()
+        except (presence.BboxError, VavError, requests.RequestException) as exc:
+            print(f"warning: {exc}", file=sys.stderr, flush=True)
+        finally:
+            if client.session:
+                _save_session(client.session)
+        time.sleep(args.interval)
 
 
 class _DayAction(argparse.Action):
@@ -147,6 +183,37 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("capability_id", type=int)
     p.add_argument("value", help='JSON value, e.g. 19.5, true, "on"')
 
+    p = sub.add_parser(
+        "bbox-hosts", help="List the devices known to the Bbox (to find a phone MAC)"
+    )
+    p.add_argument("--bbox-url", default=presence.BBOX_URL)
+
+    p = sub.add_parser(
+        "presence-watch", help="Alert when no phone is on the Wi-Fi while radiators heat"
+    )
+    p.add_argument(
+        "--phone", action="append", required=True, metavar="MAC", help="Phone MAC; repeatable"
+    )
+    p.add_argument("--hub", action="append", help="Hub to watch; repeatable (default: all hubs)")
+    p.add_argument("--bbox-url", default=presence.BBOX_URL)
+    p.add_argument(
+        "--away-after",
+        type=float,
+        default=30,
+        metavar="MINUTES",
+        help="Minutes without any phone before nobody is home (default 30)",
+    )
+    p.add_argument(
+        "--interval", type=float, default=60, metavar="SECONDS", help="Poll period (default 60)"
+    )
+    p.add_argument("--ntfy-topic", help="Send alerts to this ntfy topic (default: print only)")
+    p.add_argument("--ntfy-server", default="https://ntfy.sh")
+    p.add_argument(
+        "--set-eco",
+        action="store_true",
+        help="Also switch heating radiators to Eco, and restore their mode on return",
+    )
+
     p = sub.add_parser("raw", help="Send an arbitrary authenticated request")
     p.add_argument("method")
     p.add_argument("path")
@@ -160,6 +227,15 @@ def main(argv: list[str] | None = None) -> None:
         client.login(args.email, password)
         _save_session(client.session)
         print(f"Session saved to {_token_file()}")
+        return
+
+    if args.cmd == "bbox-hosts":
+        for host in _bbox_from_args(args).hosts():
+            state = "on " if presence.is_active(host.get("active")) else "off"
+            print(
+                f"{state} {host.get('macaddress', '-'):17}  {host.get('ipaddress') or '-':15}  "
+                f"{host.get('link') or '-':10}  {host.get('hostname') or '-'}"
+            )
         return
 
     if args.cmd == "set-schedule" and not args.file and not args.day:
@@ -186,6 +262,9 @@ def main(argv: list[str] | None = None) -> None:
             if not args.dry_run:
                 for target_id in args.target_ids:
                     client.set_schedule(args.hub_id, target_id, events)
+            return
+        if args.cmd == "presence-watch":
+            _presence_watch(client, args)
             return
     finally:
         if client.session:

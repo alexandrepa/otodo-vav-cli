@@ -65,3 +65,11 @@ def test_replace_days_keeps_other_days():
     assert described["sat"] == described["sun"] == ["08:00 comfort", "23:00 eco"]
     assert described["fri"] == schedule.describe(DEFAULT)["fri"]
     assert [e["t"] for e in events] == sorted(e["t"] for e in events)
+
+
+def test_mode_at_follows_last_event_and_wraps_round_the_week():
+    assert schedule.mode_at(DEFAULT, 0 * 1440 + 420) == 2  # Monday 07:00
+    assert schedule.mode_at(DEFAULT, 0 * 1440 + 600) == 3  # Monday 10:00
+    assert schedule.mode_at(DEFAULT, 0 * 1440 + 360) == 2  # Monday 06:00 exactly
+    assert schedule.mode_at(DEFAULT, 0 * 1440 + 60) == 3  # Monday 01:00, from Sunday 23:00
+    assert schedule.mode_at([], 600) is None

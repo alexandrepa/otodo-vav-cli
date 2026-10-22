@@ -70,6 +70,33 @@ output of `schedule --json`) and replaces each day given with `--day`; other day
 Instead of `otodo-vav login`, you can set `VAV_EMAIL` and `VAV_PASSWORD`. `VAV_TOKEN_FILE` changes
 where the session token is stored.
 
+## Alert when nobody is home and radiators heat
+
+`presence-watch` checks which phones are connected to a **Bouygues Bbox** and sends an alert
+when none has been seen for a while (30 minutes by default) while a radiator is in comfort,
+either directly (Comfort, Comfort −1, Comfort −2) or through its Auto schedule. Run it on a
+machine that stays on at home (Raspberry Pi, NAS…): it reads the box's local API at
+`https://mabbox.bytel.fr` (`GET /api/v1/hosts`), which only answers from the home network.
+
+```bash
+otodo-vav bbox-hosts                       # devices known to the box, to find each phone's MAC
+export BBOX_PASSWORD=…                     # box admin password, used if the box asks for a session
+otodo-vav presence-watch --phone aa:bb:cc:dd:ee:ff --phone 11:22:33:44:55:66 \
+    --ntfy-topic my-secret-topic           # push alerts through ntfy.sh (app on iOS / Android)
+otodo-vav presence-watch --phone aa:bb:cc:dd:ee:ff --set-eco   # also switch to Eco, restore on return
+```
+
+Each heating radiator is reported once per absence. With `--set-eco`, the reported radiators
+are switched to Eco and put back in their previous mode when a phone reconnects. Without
+`--ntfy-topic`, alerts are only printed. Other options: `--away-after MINUTES`,
+`--interval SECONDS` (poll period, 60 by default), `--hub` (default: all hubs),
+`--bbox-url` (for example `http://192.168.1.254`).
+
+Phones use a private Wi-Fi address per network: keep it fixed for the home network
+(iOS: *Private Wi-Fi Address* set to *Fixed*; Android: *Use randomized MAC*, not per
+connection), or the MAC given to `--phone` will change. A phone in standby can drop off the
+Wi-Fi for a few minutes, which is why absence only starts after `--away-after`.
+
 ## How the API works
 
 | Item | Value |

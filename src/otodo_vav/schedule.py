@@ -102,3 +102,19 @@ def describe(events: list[dict[str, Any]]) -> dict[str, list[str]]:
         mode = _MODE_NAMES.get(event["mm"], f"mm={event['mm']}")
         out[DAYS[event["d"]]].append(f"{format_time(event['t'] % MINUTES_PER_DAY)} {mode}")
     return out
+
+
+def mode_at(events: list[dict[str, Any]], minute_of_week: int) -> int | None:
+    """Mode set by the last event at or before `minute_of_week`, wrapping round the week.
+
+    None when there are no events.
+    """
+    ordered = sort_events(events)
+    if not ordered:
+        return None
+    current = ordered[-1]
+    for event in ordered:
+        if event["t"] > minute_of_week:
+            break
+        current = event
+    return current["mm"]
